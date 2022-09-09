@@ -577,6 +577,7 @@ dependencies = [
 name = "gloom-rs"
 version = "0.3.0"
 dependencies = [
+ "bytemuck",
  "gl",
  "glutin",
  "image",

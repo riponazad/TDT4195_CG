@@ -193,8 +193,13 @@ fn main() {
             0, 1, 2, 3, 4, 5, 7, 6, 8, 9, 10, 11, 12, 13, 14
         ];
 
+<<<<<<< Updated upstream
         let my_vao = unsafe { create_vao(&vertices, &indices) };
 
+=======
+        let my_vao = unsafe { create_vao(&vertices, &indices, &vertColors) };
+        //wegfwegyu
+>>>>>>> Stashed changes
 
         // == // Set up your shaders here
 

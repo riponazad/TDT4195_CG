@@ -17,6 +17,7 @@ mod shader;
 mod util;
 
 use gl::Uniform1f;
+use glm::{Mat4, mat4};
 use glutin::event::{Event, WindowEvent, DeviceEvent, KeyboardInput, ElementState::{Pressed, Released}, VirtualKeyCode::{self, *}};
 use glutin::event_loop::ControlFlow;
 
@@ -233,6 +234,7 @@ fn main() {
         let my_vao = unsafe { create_vao(&vertices, &indices, &vertColors) };
 
 
+
         // == // Set up your shaders here
 
         // Basic usage of shader helper:
@@ -308,7 +310,27 @@ fn main() {
             }
 
             // == // Please compute camera transforms here (exercise 2 & 3)
-
+            //Creating Uniform function
+            unsafe {
+                let prespective: glm::Mat4 = glm::perspective(
+                    (INITIAL_SCREEN_W / INITIAL_SCREEN_H) as f32,
+                    90.0,
+                    1.0,
+                    100.0,
+                );
+                let mut transform: glm::Mat4 = glm::identity();
+                transform = glm::rotation(elapsed.sin(), &glm::vec3(0.0, 0.0, 1.0)) *transform;
+                transform = glm::translation(&glm::vec3(0.0, 0.0, -0.9)) *transform;
+                transform = glm::scaling(&glm::vec3(100.00,100.00,100.00)) *transform;
+                transform = prespective *transform;
+                gl::UniformMatrix4fv(22, 1, gl::FALSE, transform.as_ptr());
+                //let rotation: glm::Mat4 = glm::rotation(elapsed.sin(), &glm::vec3(0.0, 0.0, 1.0));
+                //let translation: glm::Mat4 = glm::translation(&glm::vec3(0.0, 0.0, 0.0));
+                //let transformation: glm::Mat4 = translation*rotation;
+                //gl::UniformMatrix4fv(20, 1, gl::FALSE, rotation.as_ptr());
+                //gl::UniformMatrix4fv(21, 1, gl::FALSE, translation.as_ptr());
+                //gl::UniformMatrix4fv(22, 1, gl::FALSE, transformation.as_ptr());
+            };
 
             unsafe {
                 // Clear the color and depth buffers
@@ -316,7 +338,7 @@ fn main() {
                 gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
 
-                gl::Uniform1f(2, elapsed.sin());
+                //gl::Uniform1f(2, elapsed.sin());
 
 
                 // == // Issue the necessary gl:: commands to draw your scene here

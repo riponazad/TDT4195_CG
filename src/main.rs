@@ -16,6 +16,7 @@ use std::sync::{Mutex, Arc, RwLock};
 mod shader;
 mod util;
 
+use gl::Uniform1f;
 use glutin::event::{Event, WindowEvent, DeviceEvent, KeyboardInput, ElementState::{Pressed, Released}, VirtualKeyCode::{self, *}};
 use glutin::event_loop::ControlFlow;
 
@@ -68,7 +69,6 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f
     let mut vbo_id:u32 = 0;
     gl::GenBuffers(1, &mut vbo_id);
     gl::BindBuffer(gl::ARRAY_BUFFER, vbo_id);
-
     // * Fill it with data
     gl::BufferData(
         gl::ARRAY_BUFFER,
@@ -76,8 +76,6 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f
         pointer_to_array(vertices), //vertices.as_ptr() as *const _ 
         gl::STATIC_DRAW
     );
-
-
     // * Configure a VAP for the data and enable it
     gl::VertexAttribPointer(
         0,
@@ -94,7 +92,6 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f
     let mut vbo2_id:u32 = 0;
     gl::GenBuffers(1, &mut vbo2_id);
     gl::BindBuffer(gl::ARRAY_BUFFER, vbo2_id);
-
     // * Fill it with data
     gl::BufferData(
         gl::ARRAY_BUFFER,
@@ -102,8 +99,6 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f
         pointer_to_array(vertColors), //vertices.as_ptr() as *const _ 
         gl::STATIC_DRAW
     );
-
-
     // * Configure a VAP for the colors of vertices and enable it
     gl::VertexAttribPointer(
         1,
@@ -197,6 +192,15 @@ fn main() {
 
         //Declaring verties as input buffers
         let vertices: Vec<f32> = vec![
+            /* -0.6, -0.6, 0.5,
+            0.6, -0.6, 0.5,
+            0.0, 0.6, 0.5,
+            -0.6, 0.4, 0.0,
+            0.0, -0.8, 0.0,
+            0.6, 0.4, 0.0,
+            -0.8, -0.1, 0.9,
+            0.4, -0.8, 0.9,
+            0.4, 0.6, 0.9,*/
             -0.8, -0.8, 0.0,
             -0.3, -0.8, 0.0,
             -0.5, -0.3, 0.0,
@@ -206,12 +210,6 @@ fn main() {
             0.0, 0.0, 0.0,
             0.0, 0.6, 0.0,
             -0.6, 0.6, 0.0,
-            /*-0.9, -0.2, 0.0,
-            -0.1, -0.2, 0.0,
-            -0.5, 0.3, 0.0, */
-            /* 0.6, -0.8, -1.2,
-            0.0, 0.4, 0.0,
-            -0.8, -0.2, 1.2, */
         ];
 
         //Declaring colors of all verties
@@ -224,12 +222,13 @@ fn main() {
             0.1, 0.9, 0.5, 1.0,
             0.0, 1.0, 0.0, 1.0,
             0.0, 0.0, 1.0, 1.0,
-            0.7, 0.1, 0.5, 1.0,
+            0.7, 0.1, 0.5, 1.0
         ];
 
         let indices: Vec<u32> = vec![
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
         ];
+
 
         let my_vao = unsafe { create_vao(&vertices, &indices, &vertColors) };
 
@@ -315,6 +314,9 @@ fn main() {
                 // Clear the color and depth buffers
                 gl::ClearColor(0.035, 0.046, 0.078, 1.0); // night sky, full opacity
                 gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+
+
+                gl::Uniform1f(2, elapsed.sin());
 
 
                 // == // Issue the necessary gl:: commands to draw your scene here

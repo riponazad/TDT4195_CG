@@ -16,7 +16,6 @@ use std::sync::{Mutex, Arc, RwLock};
 mod shader;
 mod util;
 
-use gl::Uniform1f;
 use glutin::event::{Event, WindowEvent, DeviceEvent, KeyboardInput, ElementState::{Pressed, Released}, VirtualKeyCode::{self, *}};
 use glutin::event_loop::ControlFlow;
 
@@ -201,15 +200,15 @@ fn main() {
             -0.8, -0.1, 0.9,
             0.4, -0.8, 0.9,
             0.4, 0.6, 0.9,*/
-            -0.8, -0.8, 0.0,
-            -0.3, -0.8, 0.0,
-            -0.5, -0.3, 0.0,
-            0.3, -0.8, 0.0,
-            0.8, 0.1, 0.0,
-            0.0, -0.3, 0.0,
-            0.0, 0.0, 0.0,
-            0.0, 0.6, 0.0,
-            -0.6, 0.6, 0.0,
+            -0.8, -0.8, -1.0,
+            -0.3, -0.8, -1.0,
+            -0.5, -0.3, -1.0,
+            0.3, -0.8, -1.0,
+            0.8, 0.1, -1.0,
+            0.0, -0.3, -1.0,
+            0.0, 0.0, -1.0,
+            0.0, 0.6, -1.0,
+            -0.6, 0.6, -1.0,
         ];
 
         //Declaring colors of all verties
@@ -250,6 +249,8 @@ fn main() {
             simple_shader.activate();
         }
 
+        // Variable to store motion values in x, y, and z coordinates
+        let mut motion: Vec<f32> = vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0];  //translationXYZ [0, 1, 2], rotationXYZ [3, 4, 5]
 
         // Used to demonstrate keyboard handling for exercise 2.
         let mut _arbitrary_number = 0.0; // feel free to remove
@@ -283,13 +284,57 @@ fn main() {
                         // The `VirtualKeyCode` enum is defined here:
                         //    https://docs.rs/winit/0.25.0/winit/event/enum.VirtualKeyCode.html
 
-                        VirtualKeyCode::A => {
+                        /* VirtualKeyCode::A => {
                             _arbitrary_number += delta_time;
                         }
                         VirtualKeyCode::D => {
                             _arbitrary_number -= delta_time;
+                        } */
+
+
+                        // Translation -> X
+                        VirtualKeyCode::D =>{
+                            motion[0] += 2.0*delta_time;
+                        }
+                        VirtualKeyCode::A =>{
+                            motion[0] -= 2.0*delta_time;
+                        }
+                        // Translation -> Y
+                        VirtualKeyCode::W =>{
+                            motion[1] += 2.0*delta_time;
+                        }
+                        VirtualKeyCode::S =>{
+                            motion[1] -= 2.0*delta_time;
+                        }
+                        // Translation -> Z
+                        VirtualKeyCode::Space =>{
+                            motion[2] += 2.0*delta_time;
+                        }
+                        VirtualKeyCode::LShift =>{
+                            motion[2] -= 2.0*delta_time;
                         }
 
+                        // Rotation -> X
+                        VirtualKeyCode::Left =>{
+                            motion[3] += 20.0*delta_time;
+                        }
+                        VirtualKeyCode::Right =>{
+                            motion[3] -= 20.0*delta_time;
+                        }
+                        // Rotation -> Y
+                        VirtualKeyCode::Up =>{
+                            motion[4] += 20.0*delta_time;
+                        }
+                        VirtualKeyCode::Down =>{
+                            motion[4] -= 20.0*delta_time;
+                        }
+                        // Rotation -> Z
+                        VirtualKeyCode::Key1 =>{
+                            motion[5] += 20.0*delta_time;
+                        }
+                        VirtualKeyCode::Key5 =>{
+                            motion[5] -= 20.0*delta_time;
+                        }
 
                         // default handler:
                         _ => { }
@@ -306,7 +351,21 @@ fn main() {
             }
 
             // == // Please compute camera transforms here (exercise 2 & 3)
-
+            let perspective: glm::Mat4 = glm::perspective(
+                window_aspect_ratio,
+                90.0,
+                1.0,
+                100.0
+            );
+            let mut transformMatrix: glm::Mat4 = glm::identity();
+            transformMatrix = glm::translation(&glm::vec3(motion[0], motion[1], motion[2])) * transformMatrix;
+            transformMatrix = glm::rotation(motion[3].to_radians(), &glm::vec3(1.0, 0.0, 0.0)) * transformMatrix;
+            transformMatrix = glm::rotation(motion[4].to_radians(), &glm::vec3(0.0, 1.0, 0.0)) * transformMatrix;
+            transformMatrix = glm::rotation(motion[5].to_radians(), &glm::vec3(0.0, 0.0, 1.0)) * transformMatrix;
+            transformMatrix = perspective * transformMatrix;
+            unsafe{
+                gl::UniformMatrix4fv(3, 1, gl::FALSE, transformMatrix.as_ptr());
+            }
 
             unsafe {
                 // Clear the color and depth buffers
@@ -314,7 +373,7 @@ fn main() {
                 gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
 
-                gl::Uniform1f(2, elapsed.sin());
+                //gl::Uniform1f(2, elapsed.sin());
 
 
                 // == // Issue the necessary gl:: commands to draw your scene here

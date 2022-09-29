@@ -15,6 +15,7 @@ use std::sync::{Mutex, Arc, RwLock};
 
 mod shader;
 mod util;
+mod mesh;
 
 use glutin::event::{Event, WindowEvent, DeviceEvent, KeyboardInput, ElementState::{Pressed, Released}, VirtualKeyCode::{self, *}};
 use glutin::event_loop::ControlFlow;
@@ -54,7 +55,7 @@ fn offset<T>(n: u32) -> *const c_void {
 
 
 // == // Generate your VAO here
-unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f32>) -> u32 {
+unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f32>, vertNormals: &Vec<f32>) -> u32 {
     // Implement me!
     // This should:
 
@@ -108,6 +109,29 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f
         0 as *const _
     );
     gl::EnableVertexAttribArray(1);
+
+
+    // * Generate a VBO for normals and bind it
+    let mut vbo3_id:u32 = 0;
+    gl::GenBuffers(1, &mut vbo3_id);
+    gl::BindBuffer(gl::ARRAY_BUFFER, vbo3_id);
+    // * Fill it with data
+    gl::BufferData(
+        gl::ARRAY_BUFFER,
+        byte_size_of_array(vertNormals),
+        pointer_to_array(vertNormals), //vertices.as_ptr() as *const _ 
+        gl::STATIC_DRAW
+    );
+    // * Configure a VAP for the colors of vertices and enable it
+    gl::VertexAttribPointer(
+        2,
+        3,
+        gl::FLOAT,
+        gl::FALSE,
+        0,
+        0 as *const _
+    );
+    gl::EnableVertexAttribArray(2);
 
 
     // * Generate a IBO and bind it
@@ -228,7 +252,19 @@ fn main() {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
         ];
 
-        let my_vao = unsafe { create_vao(&vertices, &indices, &vertColors) };
+        //let my_vao = unsafe { create_vao(&vertices, &indices, &vertColors) };
+
+        //load the terrain model obj
+        let terrain_mesh = mesh::Terrain::load("./resources/lunarsurface.obj");
+
+        let terrain_vao = unsafe { 
+            create_vao(
+                &terrain_mesh.vertices,
+                &terrain_mesh.indices,
+                &terrain_mesh.colors,
+                &terrain_mesh.normals
+            ) 
+        };
 
         // == // Set up your shaders here
 
@@ -248,6 +284,7 @@ fn main() {
         unsafe{
             simple_shader.activate();
         }
+
 
         // Variable to store motion values in x, y, and z coordinates
         let mut motion: Vec<f32> = vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0];  //translationXYZ [0, 1, 2], rotationXYZ [3, 4, 5]
@@ -294,24 +331,24 @@ fn main() {
 
                         // Translation -> X
                         VirtualKeyCode::D =>{
-                            motion[0] += 2.0*delta_time;
+                            motion[0] += 20.0*delta_time;
                         }
                         VirtualKeyCode::A =>{
-                            motion[0] -= 2.0*delta_time;
+                            motion[0] -= 20.0*delta_time;
                         }
                         // Translation -> Y
                         VirtualKeyCode::W =>{
-                            motion[1] += 2.0*delta_time;
+                            motion[1] += 20.0*delta_time;
                         }
                         VirtualKeyCode::S =>{
-                            motion[1] -= 2.0*delta_time;
+                            motion[1] -= 20.0*delta_time;
                         }
                         // Translation -> Z
                         VirtualKeyCode::Space =>{
-                            motion[2] += 2.0*delta_time;
+                            motion[2] += 20.0*delta_time;
                         }
                         VirtualKeyCode::LShift =>{
-                            motion[2] -= 2.0*delta_time;
+                            motion[2] -= 20.0*delta_time;
                         }
 
                         // Rotation -> X
@@ -355,7 +392,7 @@ fn main() {
                 window_aspect_ratio,
                 90.0,
                 1.0,
-                100.0
+                1000.0
             );
             let mut transformMatrix: glm::Mat4 = glm::identity();
             transformMatrix = glm::translation(&glm::vec3(motion[0], motion[1], motion[2])) * transformMatrix;
@@ -379,7 +416,7 @@ fn main() {
                 // == // Issue the necessary gl:: commands to draw your scene here
                 gl::DrawElements(
                     gl::TRIANGLES,
-                    indices.len() as i32,
+                    terrain_mesh.index_count, // indices.len() as i32,
                     gl::UNSIGNED_INT,
                     0 as *const _
                 );

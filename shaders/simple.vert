@@ -5,6 +5,7 @@ layout(location=1) in vec4 color;
 layout(location=2) in vec3 normal;
 //uniform layout(location=2) float elapsed;
 uniform layout(location=3) mat4 transform;
+uniform layout(location=4) mat4 trans;
 
 out vec4 v_color;
 out vec3 v_normal;

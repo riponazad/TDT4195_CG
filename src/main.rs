@@ -15,6 +15,9 @@ use std::sync::{Mutex, Arc, RwLock};
 
 mod shader;
 mod util;
+mod mesh;
+mod scene_graph;
+use scene_graph::SceneNode;
 
 use glutin::event::{Event, WindowEvent, DeviceEvent, KeyboardInput, ElementState::{Pressed, Released}, VirtualKeyCode::{self, *}};
 use glutin::event_loop::ControlFlow;
@@ -54,7 +57,7 @@ fn offset<T>(n: u32) -> *const c_void {
 
 
 // == // Generate your VAO here
-unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f32>) -> u32 {
+unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f32>, vertNormals: &Vec<f32>) -> u32 {
     // Implement me!
     // This should:
 
@@ -110,6 +113,29 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f
     gl::EnableVertexAttribArray(1);
 
 
+    // * Generate a VBO for normals and bind it
+    let mut vbo3_id:u32 = 0;
+    gl::GenBuffers(1, &mut vbo3_id);
+    gl::BindBuffer(gl::ARRAY_BUFFER, vbo3_id);
+    // * Fill it with data
+    gl::BufferData(
+        gl::ARRAY_BUFFER,
+        byte_size_of_array(vertNormals),
+        pointer_to_array(vertNormals), //vertices.as_ptr() as *const _ 
+        gl::STATIC_DRAW
+    );
+    // * Configure a VAP for the colors of vertices and enable it
+    gl::VertexAttribPointer(
+        2,
+        3,
+        gl::FLOAT,
+        gl::FALSE,
+        0,
+        0 as *const _
+    );
+    gl::EnableVertexAttribArray(2);
+
+
     // * Generate a IBO and bind it
     let mut idx:u32 = 0;
     gl::GenBuffers(1, &mut idx);
@@ -125,6 +151,32 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f
 
     // * Return the ID of the VAO
     return vao_id;
+}
+
+
+//function to draw the scenegraph
+unsafe fn draw_scene(node: &scene_graph::SceneNode, view_projection_matrix: &glm::Mat4, transformation_so_far: &glm::Mat4) {
+    // Check if node is drawable, if so: set uniforms and draw
+    //node.print();
+    if node.vao_id != 0 {
+        //let mvp=view_projection_matrix*node.current_transformation_matrix;
+        gl::BindVertexArray(node.vao_id);
+        //gl::UniformMatrix4fv(4, 1, gl::FALSE, view_projection_matrix.as_ptr());
+        //gl::UniformMatrix4fv(4, 1, gl::FALSE, mvp.as_ptr());
+        //gl::UniformMatrix4fv(2, 1, gl::FALSE, node.current_transformation_matrix.as_ptr());
+        //gl::DrawElements(gl::TRIANGLES,node.index_count,gl::UNSIGNED_INT,ptr::null());
+        gl::UniformMatrix4fv(3, 1, gl::FALSE, view_projection_matrix.as_ptr());
+        gl::DrawElements(
+            gl::TRIANGLES,
+            node.index_count, // indices.len() as i32,
+            gl::UNSIGNED_INT,
+            0 as *const _
+        ); 
+    }
+    // Recurse
+    for &child in &node.children {
+        draw_scene(&*child, &view_projection_matrix, &transformation_so_far);
+    }
 }
 
 
@@ -228,7 +280,81 @@ fn main() {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
         ];
 
-        let my_vao = unsafe { create_vao(&vertices, &indices, &vertColors) };
+        //let my_vao = unsafe { create_vao(&vertices, &indices, &vertColors) };
+
+        //load the terrain model obj
+        let terrain_mesh = mesh::Terrain::load("./resources/lunarsurface.obj");
+
+        //create vao for the terrain
+        let terrain_vao = unsafe { 
+            create_vao(
+                &terrain_mesh.vertices,
+                &terrain_mesh.indices,
+                &terrain_mesh.colors,
+                &terrain_mesh.normals
+            ) 
+        };
+
+        //load the helicopter model obj
+        let helicopter_mesh = mesh::Helicopter::load("./resources/helicopter.obj");
+        
+        //create vao for the body of the helicopter
+        let helicopter_body_vao = unsafe { 
+            create_vao(
+                &helicopter_mesh.body.vertices,
+                &helicopter_mesh.body.indices,
+                &helicopter_mesh.body.colors,
+                &helicopter_mesh.body.normals
+            ) 
+        };
+        
+        //create vao for the door of the helicopter
+        let helicopter_door_vao = unsafe { 
+            create_vao(
+                &helicopter_mesh.door.vertices,
+                &helicopter_mesh.door.indices,
+                &helicopter_mesh.door.colors,
+                &helicopter_mesh.door.normals
+            ) 
+        };
+
+        //create vao for the main rotor of the helicopter
+        let helicopter_main_rotor_vao = unsafe { 
+            create_vao(
+                &helicopter_mesh.main_rotor.vertices,
+                &helicopter_mesh.main_rotor.indices,
+                &helicopter_mesh.main_rotor.colors,
+                &helicopter_mesh.main_rotor.normals
+            ) 
+        };
+
+        //create vao for the tail rotor of the helicopter
+        let helicopter_tail_rotor_vao = unsafe { 
+            create_vao(
+                &helicopter_mesh.tail_rotor.vertices,
+                &helicopter_mesh.tail_rotor.indices,
+                &helicopter_mesh.tail_rotor.colors,
+                &helicopter_mesh.tail_rotor.normals
+            ) 
+        };
+
+        //root of the scene
+        let mut root_scene = SceneNode::new();
+
+        //Generate SceneNodes for every objects
+        let mut terrain_node = SceneNode::from_vao(terrain_vao, terrain_mesh.index_count);
+        let mut helicopter_body_node = SceneNode::from_vao(helicopter_body_vao, helicopter_mesh.body.index_count);
+        let mut helicopter_door_node = SceneNode::from_vao(helicopter_door_vao, helicopter_mesh.door.index_count);
+        let mut helicopter_main_rotor_node = SceneNode::from_vao(helicopter_main_rotor_vao, helicopter_mesh.main_rotor.index_count);
+        let mut helicopter_tail_rotor_node = SceneNode::from_vao(helicopter_tail_rotor_vao, helicopter_mesh.tail_rotor.index_count);
+
+
+        //Organize the scene graph
+        terrain_node.add_child(&helicopter_body_node);
+        helicopter_body_node.add_child(&helicopter_door_node);
+        helicopter_body_node.add_child(&helicopter_main_rotor_node);
+        helicopter_body_node.add_child(&helicopter_tail_rotor_node);
+        root_scene.add_child(&terrain_node);
 
         // == // Set up your shaders here
 
@@ -248,6 +374,7 @@ fn main() {
         unsafe{
             simple_shader.activate();
         }
+
 
         // Variable to store motion values in x, y, and z coordinates
         let mut motion: Vec<f32> = vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0];  //translationXYZ [0, 1, 2], rotationXYZ [3, 4, 5]
@@ -294,24 +421,24 @@ fn main() {
 
                         // Translation -> X
                         VirtualKeyCode::D =>{
-                            motion[0] += 2.0*delta_time;
+                            motion[0] += 20.0*delta_time;
                         }
                         VirtualKeyCode::A =>{
-                            motion[0] -= 2.0*delta_time;
+                            motion[0] -= 20.0*delta_time;
                         }
                         // Translation -> Y
                         VirtualKeyCode::W =>{
-                            motion[1] += 2.0*delta_time;
+                            motion[1] += 20.0*delta_time;
                         }
                         VirtualKeyCode::S =>{
-                            motion[1] -= 2.0*delta_time;
+                            motion[1] -= 20.0*delta_time;
                         }
                         // Translation -> Z
                         VirtualKeyCode::Space =>{
-                            motion[2] += 2.0*delta_time;
+                            motion[2] += 20.0*delta_time;
                         }
                         VirtualKeyCode::LShift =>{
-                            motion[2] -= 2.0*delta_time;
+                            motion[2] -= 20.0*delta_time;
                         }
 
                         // Rotation -> X
@@ -355,7 +482,7 @@ fn main() {
                 window_aspect_ratio,
                 90.0,
                 1.0,
-                100.0
+                1000.0
             );
             let mut transformMatrix: glm::Mat4 = glm::identity();
             transformMatrix = glm::translation(&glm::vec3(motion[0], motion[1], motion[2])) * transformMatrix;
@@ -364,7 +491,7 @@ fn main() {
             transformMatrix = glm::rotation(motion[5].to_radians(), &glm::vec3(0.0, 0.0, 1.0)) * transformMatrix;
             transformMatrix = perspective * transformMatrix;
             unsafe{
-                gl::UniformMatrix4fv(3, 1, gl::FALSE, transformMatrix.as_ptr());
+                //gl::UniformMatrix4fv(3, 1, gl::FALSE, transformMatrix.as_ptr());
             }
 
             unsafe {
@@ -377,12 +504,14 @@ fn main() {
 
 
                 // == // Issue the necessary gl:: commands to draw your scene here
-                gl::DrawElements(
+                /* gl::DrawElements(
                     gl::TRIANGLES,
-                    indices.len() as i32,
+                    helicopter_mesh.body.index_count, // indices.len() as i32,
                     gl::UNSIGNED_INT,
                     0 as *const _
-                );
+                ); */
+                let mut tra: glm::Mat4 = glm::identity();
+                draw_scene(&root_scene, &transformMatrix, &tra);
                 //gl::DrawArrays(gl::TRIANGLES, 0, 3);
 
 

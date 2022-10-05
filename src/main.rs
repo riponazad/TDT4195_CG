@@ -12,6 +12,7 @@ use std::convert::TryInto;
 use std::{ mem, ptr, os::raw::c_void };
 use std::thread;
 use std::sync::{Mutex, Arc, RwLock};
+use glm::vec3;
 
 mod shader;
 mod util;
@@ -155,12 +156,19 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f
 
 
 //function to draw the scenegraph
-unsafe fn draw_scene(node: &scene_graph::SceneNode, view_projection_matrix: &glm::Mat4, transformation_so_far: &glm::Mat4) {
+unsafe fn draw_scene(node: &scene_graph::SceneNode, view_projection_matrix: &glm::Mat4, transformation_so_far: mut &glm::Mat4) {
     // Check if node is drawable, if so: set uniforms and draw
     //node.print();
     if node.vao_id != 0 {
         //let mvp=view_projection_matrix*node.current_transformation_matrix;
         gl::BindVertexArray(node.vao_id);
+        let mut trans: glm::Mat4 = *transformation_so_far;
+        trans = glm::translation(&vec3(1.0,0.0,0.0)) * trans;
+        // transformMatrix = glm::translation(node.position) * transformation_so_far;
+        // transformMatrix = glm::rotation(node.rotation[0].to_radians(), &glm::vec3(1.0, 0.0, 0.0)) * transformMatrix;
+        // transformMatrix = glm::rotation(node.rotation[1].to_radians(), &glm::vec3(0.0, 1.0, 0.0)) * transformMatrix;
+        // transformMatrix = glm::rotation(node.rotation[2].to_radians(), &glm::vec3(0.0, 0.0, 1.0)) * transformMatrix;
+        // transformMatrix = view_projection_matrix.as_ptr()* transformMatrix;
         //gl::UniformMatrix4fv(4, 1, gl::FALSE, view_projection_matrix.as_ptr());
         //gl::UniformMatrix4fv(4, 1, gl::FALSE, mvp.as_ptr());
         //gl::UniformMatrix4fv(2, 1, gl::FALSE, node.current_transformation_matrix.as_ptr());
@@ -355,6 +363,10 @@ fn main() {
         helicopter_body_node.add_child(&helicopter_main_rotor_node);
         helicopter_body_node.add_child(&helicopter_tail_rotor_node);
         root_scene.add_child(&terrain_node);
+        helicopter_body_node.reference_point = glm::vec3(0.0, 0.0, 0.0);
+        helicopter_main_rotor_node.reference_point = glm::vec3(0.0, 2.3, 0.0);
+        helicopter_tail_rotor_node.reference_point = glm::vec3(0.35, 2.3, 10.4);
+
 
         // == // Set up your shaders here
 
@@ -511,6 +523,9 @@ fn main() {
                     0 as *const _
                 ); */
                 let mut tra: glm::Mat4 = glm::identity();
+                // unsafe{
+                //     gl::UniformMatrix4fv(40, 1, gl::FALSE, tra.as_ptr());
+                // }
                 draw_scene(&root_scene, &transformMatrix, &tra);
                 //gl::DrawArrays(gl::TRIANGLES, 0, 3);
 

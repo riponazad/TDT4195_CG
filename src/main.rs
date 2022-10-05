@@ -18,7 +18,9 @@ mod shader;
 mod util;
 mod mesh;
 mod scene_graph;
+use glm::translation;
 use scene_graph::SceneNode;
+mod toolbox;
 
 use glutin::event::{Event, WindowEvent, DeviceEvent, KeyboardInput, ElementState::{Pressed, Released}, VirtualKeyCode::{self, *}};
 use glutin::event_loop::ControlFlow;
@@ -159,9 +161,26 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, vertColors: &Vec<f
 unsafe fn draw_scene(node: &scene_graph::SceneNode, view_projection_matrix: &glm::Mat4, transformation_so_far: mut &glm::Mat4) {
     // Check if node is drawable, if so: set uniforms and draw
     //node.print();
+    let mut trans: glm::Mat4 = glm::identity();
     if node.vao_id != 0 {
-        //let mvp=view_projection_matrix*node.current_transformation_matrix;
+        
+        //Compute the current node’s relative transformation matrix
+        let temp_ref = -node.reference_point;
+        trans = glm::translation(&temp_ref)*trans;
+        trans = glm::scaling(&node.scale)*trans;
+        trans = glm::rotation(node.rotation[0], &glm::vec3(1.0, 0.0, 0.0))*trans;
+        trans = glm::rotation(node.rotation[1], &glm::vec3(0.0, 1.0, 0.0))*trans;
+        trans = glm::rotation(node.rotation[2], &glm::vec3(0.0, 0.0, 1.0))*trans;
+        trans = glm::translation(&node.reference_point)*trans;
+        trans = glm::translation(&node.position)*trans;
+        trans = transformation_so_far*trans;
+
+        let mut mvp=view_projection_matrix*trans;
+
+
+
         gl::BindVertexArray(node.vao_id);
+<<<<<<< HEAD
         let mut trans: glm::Mat4 = *transformation_so_far;
         trans = glm::translation(&vec3(1.0,0.0,0.0)) * trans;
         // transformMatrix = glm::translation(node.position) * transformation_so_far;
@@ -174,6 +193,9 @@ unsafe fn draw_scene(node: &scene_graph::SceneNode, view_projection_matrix: &glm
         //gl::UniformMatrix4fv(2, 1, gl::FALSE, node.current_transformation_matrix.as_ptr());
         //gl::DrawElements(gl::TRIANGLES,node.index_count,gl::UNSIGNED_INT,ptr::null());
         gl::UniformMatrix4fv(3, 1, gl::FALSE, view_projection_matrix.as_ptr());
+=======
+        gl::UniformMatrix4fv(3, 1, gl::FALSE, mvp.as_ptr());
+>>>>>>> master
         gl::DrawElements(
             gl::TRIANGLES,
             node.index_count, // indices.len() as i32,
@@ -183,7 +205,7 @@ unsafe fn draw_scene(node: &scene_graph::SceneNode, view_projection_matrix: &glm
     }
     // Recurse
     for &child in &node.children {
-        draw_scene(&*child, &view_projection_matrix, &transformation_so_far);
+        draw_scene(&*child, &view_projection_matrix, &trans);
     }
 }
 
@@ -357,6 +379,9 @@ fn main() {
         let mut helicopter_tail_rotor_node = SceneNode::from_vao(helicopter_tail_rotor_vao, helicopter_mesh.tail_rotor.index_count);
 
 
+        // chancging some values for evaluation
+        helicopter_body_node.rotation[1] = 90.0;
+        helicopter_body_node.position[2] = -10.0;
         //Organize the scene graph
         terrain_node.add_child(&helicopter_body_node);
         helicopter_body_node.add_child(&helicopter_door_node);
@@ -367,6 +392,12 @@ fn main() {
         helicopter_main_rotor_node.reference_point = glm::vec3(0.0, 2.3, 0.0);
         helicopter_tail_rotor_node.reference_point = glm::vec3(0.35, 2.3, 10.4);
 
+
+
+        //set the reference points for the nodes
+        helicopter_tail_rotor_node.reference_point = glm::vec3(0.35, 2.3, 10.4);
+        helicopter_main_rotor_node.reference_point = glm::vec3(0.0, 2.3, 0.0);
+        helicopter_body_node.reference_point = glm::vec3(0.0, 0.0, 0.0);
 
         // == // Set up your shaders here
 
@@ -502,9 +533,9 @@ fn main() {
             transformMatrix = glm::rotation(motion[4].to_radians(), &glm::vec3(0.0, 1.0, 0.0)) * transformMatrix;
             transformMatrix = glm::rotation(motion[5].to_radians(), &glm::vec3(0.0, 0.0, 1.0)) * transformMatrix;
             transformMatrix = perspective * transformMatrix;
-            unsafe{
-                //gl::UniformMatrix4fv(3, 1, gl::FALSE, transformMatrix.as_ptr());
-            }
+            /* unsafe{
+                gl::UniformMatrix4fv(3, 1, gl::FALSE, transformMatrix.as_ptr());
+            } */
 
             unsafe {
                 // Clear the color and depth buffers
@@ -513,6 +544,18 @@ fn main() {
 
 
                 //gl::Uniform1f(2, elapsed.sin());
+                // Rotor spining animation
+                helicopter_main_rotor_node.rotation.y = 100.0*elapsed;
+                helicopter_tail_rotor_node.rotation.x = 200.0*elapsed;
+
+                //heading
+                let heading = toolbox::simple_heading_animation(elapsed/3.0 as f32);
+                //setup for animation
+                helicopter_body_node.position.x = heading.x;
+                helicopter_body_node.position.z = heading.z;
+                helicopter_body_node.rotation.z = heading.roll;
+                helicopter_body_node.rotation.y = heading.yaw;
+                helicopter_body_node.rotation.x = heading.pitch;
 
 
                 // == // Issue the necessary gl:: commands to draw your scene here
@@ -522,11 +565,19 @@ fn main() {
                     gl::UNSIGNED_INT,
                     0 as *const _
                 ); */
+<<<<<<< HEAD
                 let mut tra: glm::Mat4 = glm::identity();
                 // unsafe{
                 //     gl::UniformMatrix4fv(40, 1, gl::FALSE, tra.as_ptr());
                 // }
                 draw_scene(&root_scene, &transformMatrix, &tra);
+=======
+                let mut trans_so_far: glm::Mat4 = glm::identity();
+                
+                //trans_so_far = glm::translation(&glm::vec3(motion[0], motion[1], motion[2])) * trans_so_far;
+
+                draw_scene(&root_scene, &transformMatrix, &trans_so_far);
+>>>>>>> master
                 //gl::DrawArrays(gl::TRIANGLES, 0, 3);
 
 

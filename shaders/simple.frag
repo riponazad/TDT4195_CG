@@ -1,7 +1,7 @@
 #version 430 core
 
-in vec4 v_color;
-in vec3 v_normal;
+in layout(location=9) vec4 in_color;
+in layout(location=10) vec3 in_normal;
 
 out vec4 color;
 
@@ -9,6 +9,7 @@ out vec4 color;
 void main()
 {
     vec3 lightDirection = normalize(vec3(0.8,-0.5, 0.6));
-    color = vec4(v_color.rgb * max(0.0, dot(v_normal, -lightDirection)), v_color.a);//v_color;
+    float scalar = max(0.0, dot(-lightDirection, in_normal));
+    color = vec4(scalar*in_color.xyz, in_color[3]);
     //color = vec4(0.1f, 0.8f, 0.5f, 1.0f);
 }

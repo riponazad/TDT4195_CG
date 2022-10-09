@@ -180,9 +180,7 @@ unsafe fn draw_scene(node: &scene_graph::SceneNode, view_projection_matrix: &Mat
 
         let mut mvp=view_projection_matrix*trans;
         gl::BindVertexArray(node.vao_id);
-        let mut trans: Mat4 = *transformation_so_far;
-        trans = glm::translation(&vec3(1.0,0.0,0.0)) * trans;
-        gl::UniformMatrix4fv(3, 1, gl::FALSE, view_projection_matrix.as_ptr());
+
         gl::UniformMatrix4fv(3, 1, gl::FALSE, mvp.as_ptr());
         gl::DrawElements(
             gl::TRIANGLES,
@@ -587,8 +585,8 @@ fn main() {
                 }
 
 
-                let mut tra: Mat4 = glm::identity();
-                draw_scene(&root_scene, &transformMatrix, &tra);
+                //let mut tra: Mat4 = glm::identity();
+                //draw_scene(&root_scene, &transformMatrix, &tra);
                 let mut trans_so_far: Mat4 = glm::identity();
                 draw_scene(&root_scene, &transformMatrix, &trans_so_far);
 
